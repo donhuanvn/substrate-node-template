@@ -88,6 +88,7 @@ pub mod pallet {
 		/// Error names should be descriptive.
 		NoneValue,
 		/// Errors should have helpful documentation associated with them.
+		SomethingError,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.

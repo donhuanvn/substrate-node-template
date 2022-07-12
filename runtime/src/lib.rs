@@ -266,9 +266,10 @@ impl pallet_template::Config for Runtime {
 	type Event = Event;
 }
 
-impl pallet_demo::Config for Runtime {
+impl pallet_kitty::Config for Runtime {
 	type Event = Event;
 }
+
 
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -288,7 +289,7 @@ construct_runtime!(
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template,
-		DemoModule: pallet_demo
+		KittyModule: pallet_kitty,
 	}
 );
 
