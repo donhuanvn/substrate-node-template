@@ -17,6 +17,10 @@ mod benchmarking;
 use frame_support::inherent::Vec;
 use frame_support::pallet_prelude::{OptionQuery, *};
 use frame_system::pallet_prelude::*;
+use frame_support::traits::Time;
+use frame_support::traits::Randomness;
+
+type Moment<T> = <<T as Config>::Time as frame_support::traits::Time >::Moment;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -29,6 +33,7 @@ pub mod pallet {
 		owner: T::AccountId,
 		price: u32,
 		gender: Gender,
+		created_time: Moment<T>,
 	}
 
 	#[derive(TypeInfo, Encode, Decode)]
@@ -48,6 +53,10 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type Time: Time;
+		#[pallet::constant]
+		type MaxLength: Get<u32>; // references: https://docs.substrate.io/reference/how-to-guides/basics/configure-runtime-constants/
+		type Randomness: Randomness<Self::Hash, Self::BlockNumber>; // https://docs.substrate.io/main-docs/build/randomness/
 	}
 
 	#[pallet::pallet]
@@ -88,7 +97,7 @@ pub mod pallet {
 		/// Error names should be descriptive.
 		NoneValue,
 		/// Errors should have helpful documentation associated with them.
-		SomethingError,
+		KittyPerOwnerTooLarge,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -99,11 +108,25 @@ pub mod pallet {
 		/// An example dispatchable that takes a singles value as a parameter, writes the value to
 		/// storage and emits an event. This function must be dispatched by a signed extrinsic.
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-		pub fn create_kitty(origin: OriginFor<T>, dna: DNA, price: u32) -> DispatchResult {
+		pub fn create_kitty(origin: OriginFor<T>, price: u32) -> DispatchResult {
 			// Check that the extrinsic was signed and get the signer.
 			// This function will return an error if the extrinsic is not signed.
 			// https://docs.substrate.io/v3/runtime/origins
 			let who = ensure_signed(origin)?;
+
+			let current_count = <KittyCount<T>>::get().unwrap_or(0);
+			let subject = Self::generate_subject(current_count);
+			let (random_value, _) = T::Randomness::random(&subject);
+			log::info!("Hash Value: {:?} and current number of kitty: {:?}", random_value, current_count);
+
+			let dna = random_value.encode();
+
+			// Make sure the owner has ability to own one more kitty.
+			let current_len = match <OwnerMap<T>>::get(&who) {
+				Some(vec) => vec.len(),
+				_ => 0 as usize
+			};
+			ensure!(current_len < T::MaxLength::get() as usize, Error::<T>::KittyPerOwnerTooLarge);
 
 			// Automatically create gender from dna
 			let gender = match dna.len() {
@@ -111,7 +134,7 @@ pub mod pallet {
 				_ => Gender::MALE,
 			};
 
-			let new_kitty: Kitty<T> = Kitty { dna: dna.clone(), owner: who.clone(), price, gender };
+			let new_kitty: Kitty<T> = Kitty { dna: dna.clone(), owner: who.clone(), price, gender, created_time: T::Time::now()};
 
 			// Store new kitty into KittyMap
 			<KittyMap<T>>::insert(dna.clone(), new_kitty);
@@ -145,6 +168,13 @@ pub mod pallet {
 			// This function will return an error if the extrinsic is not signed.
 			// https://docs.substrate.io/v3/runtime/origins
 			let who = ensure_signed(origin)?;
+
+			// Make sure the new owner has ability to own one more kitty.
+			let current_len = match <OwnerMap<T>>::get(&new_owner) {
+				Some(vec) => vec.len(),
+				_ => 0 as usize
+			};
+			ensure!(current_len < T::MaxLength::get() as usize, Error::<T>::KittyPerOwnerTooLarge);
 
 			// Update kitty's owner in KittyMap
 			<KittyMap<T>>::mutate(dna.clone(), |query: &mut Option<Kitty<T>>| match query {
@@ -183,5 +213,11 @@ impl<T> Pallet<T> {
 		let mut new_vector = Vec::<DNA>::new();
 		new_vector.push(dna);
 		Some(new_vector)
+	}
+
+	fn generate_subject(number_kitty: u32) -> Vec<u8> {
+		let mut subject = "kitty".as_bytes().to_vec();
+		subject.extend(number_kitty.encode());
+		subject
 	}
 }
