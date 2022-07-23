@@ -17,6 +17,7 @@ mod benchmarking;
 use frame_support::inherent::Vec;
 use frame_support::pallet_prelude::{OptionQuery, *};
 use frame_system::pallet_prelude::*;
+use frame_support::sp_std::fmt;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -31,7 +32,18 @@ pub mod pallet {
 		account: T::AccountId,
 	}
 
-	#[derive(TypeInfo, Encode, Decode)]
+	impl<T: Config> fmt::Debug for Students<T> {
+		fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+			f.debug_struct("Students")
+			.field("name", &self.name)
+			.field("age", &self.age)
+			.field("gender", &self.gender)
+			.field("account", &self.account)
+			.finish()
+		}
+	}
+
+	#[derive(TypeInfo, Encode, Decode, Clone, Debug)]
 	pub enum Gender {
 		MALE,
 		FEMALE,
@@ -109,7 +121,7 @@ pub mod pallet {
 			let student = Students { 
 				name: name.clone(), 
 				age: age, 
-				gender: gender, 
+				gender: gender.clone(), 
 				account: who, 
 			};
 
@@ -117,6 +129,10 @@ pub mod pallet {
 			// let current_id = StudentId::<T>::get();
 			let current_id = <StudentId<T>>::get();
 			let mut current_id = current_id.unwrap_or(0);
+
+			log::info!("Current id: {}", &current_id);
+			log::info!("Gender: {:?}", &gender);
+			log::info!("Student: {:?}", &student);
 
 			// Student::<T>::insert(current_id, student);
 			<Student<T>>::insert(current_id, student);
