@@ -75,7 +75,7 @@ pub mod pallet {
 			// Check that the extrinsic was signed and get the signer.
 			// This function will return an error if the extrinsic is not signed.
 			// https://docs.substrate.io/v3/runtime/origins
-			let who = ensure_signed(origin)?;
+			let _who = ensure_signed(origin)?;
 
 			let new_value = T::Increase::increase_value(something);
 

@@ -3,18 +3,21 @@
 use super::*;
 
 #[allow(unused)]
-use crate::Pallet as Template;
+use crate::Pallet as Kitty;
 use frame_benchmarking::{benchmarks, whitelisted_caller};
 use frame_system::RawOrigin;
+use frame_support::sp_runtime::SaturatedConversion;
 
 benchmarks! {
-	do_something {
-		let s in 0 .. 100;
+	create_kitty {
+		let dna : Vec<u8> = b"dna".to_vec();
+		let price = 10_u128.saturated_into::<BalanceOf<T>>();
 		let caller: T::AccountId = whitelisted_caller();
-	}: _(RawOrigin::Signed(caller), s)
+	}: create_kitty(RawOrigin::Signed(caller), dna, price)
+
 	verify {
-		assert_eq!(Something::<T>::get(), Some(s));
+		assert_eq!(KittyCount::<T>::get(), Some(1));
 	}
 
-	impl_benchmark_test_suite!(Template, crate::mock::new_test_ext(), crate::mock::Test);
+	impl_benchmark_test_suite!(Kitty, crate::mock::new_test_ext(), crate::mock::Test);
 }
