@@ -17,12 +17,14 @@ mod benchmarking;
 use frame_support::inherent::Vec;
 use frame_support::pallet_prelude::{OptionQuery, *};
 use frame_support::sp_std::fmt;
+use frame_support::traits::Currency;
 use frame_support::traits::Randomness;
 use frame_support::traits::Time;
-use frame_support::traits::Currency;
 use frame_system::pallet_prelude::*;
+use frame_support::sp_runtime::SaturatedConversion;
 
-type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+type BalanceOf<T> =
+	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 type Moment<T> = <<T as Config>::Time as frame_support::traits::Time>::Moment;
 
 #[frame_support::pallet]
@@ -115,6 +117,87 @@ pub mod pallet {
 		/// Errors should have helpful documentation associated with them.
 		KittyPerOwnerTooLarge,
 	}
+
+	//----------------------------------------------------------------------------
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub owners: Vec<(T::AccountId, u32)>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig { owners: Vec::<(T::AccountId, u32)>::new() }
+		}
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> GenesisConfig<T> {
+		
+		fn generate_random_kitty(owner: &T::AccountId, random_dna_seed: u32) -> Kitty<T> {
+			let mut dna = Vec::<u8>::with_capacity(32);
+			for _ in 0..31 {
+				dna.push(0u8);
+			}
+			dna.push(random_dna_seed as u8);
+			
+			// Automatically create gender from dna
+			let gender = match dna.len() {
+				0 => Gender::FEMALE,
+				_ => Gender::MALE,
+			};
+
+			Kitty {
+				dna: dna.clone(),
+				owner: owner.clone(),
+				price: 10_u128.saturated_into::<BalanceOf<T>>(),
+				gender,
+				created_time: 0_u128.saturated_into::<Moment<T>>(),
+			}
+		}
+
+		fn generate_random_kitties(owner: &T::AccountId, count: &u32) -> Vec<Kitty<T>> {
+			let mut kitties: Vec<Kitty<T>> = Vec::<Kitty<T>>::new();
+	
+			let current_storage_count = <KittyCount<T>>::get().unwrap_or(0);
+			let mut generated_count = 0u32;
+
+			while generated_count < *count {
+				let seed = current_storage_count + generated_count;
+				let new_kitty = Self::generate_random_kitty(owner, seed);
+				log::info!("New kittiy: {:?}", new_kitty);
+				kitties.push(new_kitty);
+				generated_count += 1;
+			}
+
+			kitties
+		}
+	}
+	
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			// write length of the initial vector to KittyCount
+			let mut initial_count = 0;
+			for (_, count) in self.owners.iter() {
+				initial_count += *count;
+			}
+			KittyCount::<T>::put(initial_count);
+
+			// create kitties and store them in KittyMap
+			for (owner, count) in self.owners.iter() {
+				let kitties: Vec<Kitty<T>> = Self::generate_random_kitties(owner, count);
+				// log::info!("New kittiy: {:?}", kitties);
+				for k in kitties.iter() {
+					<KittyMap<T>>::insert(&k.dna, k);
+				}
+				let dna_vec: Vec<DNA> = kitties.iter().map(|k| k.dna.clone()).collect();
+				<OwnerMap<T>>::insert(owner, dna_vec);
+			}
+		}
+	}
+
+	//----------------------------------------------------------------------------
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
 	// These functions materialize as "extrinsics", which are often compared to transactions.
@@ -231,7 +314,7 @@ pub mod pallet {
 }
 
 // helper function
-impl<T> Pallet<T> {
+impl<T: Config> Pallet<T> {
 	fn generate_new_owner(dna: DNA) -> Option<Vec<DNA>> {
 		let mut new_vector = Vec::<DNA>::new();
 		new_vector.push(dna);
@@ -244,3 +327,4 @@ impl<T> Pallet<T> {
 		subject
 	}
 }
+
