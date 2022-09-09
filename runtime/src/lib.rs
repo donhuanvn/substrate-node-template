@@ -46,6 +46,9 @@ pub use sp_runtime::{Perbill, Permill};
 /// Import the template pallet.
 pub use pallet_template;
 
+/// Import the iot identity pallet.
+pub use pallet_iot_identity;
+
 /// An index to a block.
 pub type BlockNumber = u32;
 
@@ -270,6 +273,11 @@ impl pallet_template::Config for Runtime {
 	type Event = Event;
 }
 
+/// Configure the pallet-iot-identity in pallets/iot-identity.
+impl pallet_iot_identity::Config for Runtime {
+	type Event = Event;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub struct Runtime
@@ -288,6 +296,8 @@ construct_runtime!(
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template,
+		// Include the custom logic from the pallet-iot-identity in the runtime.
+		IotIdentityModule: pallet_iot_identity
 	}
 );
 
