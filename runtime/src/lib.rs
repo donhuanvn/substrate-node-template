@@ -16,7 +16,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{AccountIdLookup, BlakeTwo256, Block as BlockT, IdentifyAccount, NumberFor, Verify},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, MultiSignature,
+	ApplyExtrinsicResult, MultiSignature, MultiSigner
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -45,6 +45,9 @@ pub use sp_runtime::{Perbill, Permill};
 
 /// Import the template pallet.
 pub use pallet_template;
+
+/// Import the pallet did.
+pub use pallet_did;
 
 /// Import the iot identity pallet.
 pub use pallet_iot_identity;
@@ -273,6 +276,14 @@ impl pallet_template::Config for Runtime {
 	type Event = Event;
 }
 
+/// Configure the pallet_did.
+impl pallet_did::Config for Runtime {
+	type Event = Event;
+	type Public = MultiSigner;
+	type Signature = Signature;
+	type Time = Timestamp;
+}
+
 /// Configure the pallet-iot-identity in pallets/iot-identity.
 impl pallet_iot_identity::Config for Runtime {
 	type Event = Event;
@@ -296,6 +307,7 @@ construct_runtime!(
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template,
+		PalletDid: pallet_did,
 		// Include the custom logic from the pallet-iot-identity in the runtime.
 		IotIdentityModule: pallet_iot_identity
 	}
