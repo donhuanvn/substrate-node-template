@@ -292,7 +292,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Get the identity owner if set.
 	/// If never changed, returns the identity as its owner.
-	fn identity_owner(identity: &T::AccountId) -> T::AccountId {
+	pub fn identity_owner(identity: &T::AccountId) -> T::AccountId {
 		match Self::owner_of(identity) {
 			Some(id) => id,
 			None => identity.clone(),

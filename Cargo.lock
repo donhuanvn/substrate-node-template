@@ -3792,6 +3792,7 @@ dependencies = [
  "pallet-balances",
  "pallet-did",
  "pallet-grandpa",
+ "pallet-iot-abac",
  "pallet-iot-identity",
  "pallet-randomness-collective-flip",
  "pallet-sudo",
@@ -4061,6 +4062,21 @@ dependencies = [
  "sp-session",
  "sp-staking",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-iot-abac"
+version = "0.0.1-dev"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-did",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
 ]
 
 [[package]]

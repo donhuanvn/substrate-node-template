@@ -52,6 +52,9 @@ pub use pallet_did;
 /// Import the iot identity pallet.
 pub use pallet_iot_identity;
 
+/// Import the iot abac (attribute-based access control) pallet.
+pub use pallet_iot_abac;
+
 /// An index to a block.
 pub type BlockNumber = u32;
 
@@ -289,6 +292,11 @@ impl pallet_iot_identity::Config for Runtime {
 	type Event = Event;
 }
 
+/// Configure the pallet-iot-abac in pallets/iot-abac.
+impl pallet_iot_abac::Config for Runtime {
+	type Event = Event;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub struct Runtime
@@ -309,7 +317,9 @@ construct_runtime!(
 		TemplateModule: pallet_template,
 		PalletDid: pallet_did,
 		// Include the custom logic from the pallet-iot-identity in the runtime.
-		IotIdentityModule: pallet_iot_identity
+		IotIdentityModule: pallet_iot_identity,
+		// Include the custom logic from the pallet-iot-abac in the runtime.
+		IoTAbacModule: pallet_iot_abac,
 	}
 );
 
