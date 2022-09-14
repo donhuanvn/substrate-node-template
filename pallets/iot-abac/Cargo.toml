@@ -1,0 +1,38 @@
+[package]
+name = "pallet-iot-abac"
+version = "0.0.1-dev"
+description = "FRAME pallet for attribute-based access control for IoT systems."
+authors = ["Nhuan Do"]
+homepage = "https://www.facebook.com/donhuanbk96"
+edition = "2021"
+license = "Unlicense"
+publish = false
+repository = "https://github.com/donhuanvn/master-thesis"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+log = {version = "0.4.17", default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"]}
+scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
+frame-support = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
+frame-system = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
+sp-core = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
+pallet-did = { version = "0.0.1-dev", default_features = false, path = "../pallet-did" }
+# frame-benchmarking = ...
+
+[dev-dependencies]
+sp-io = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
+sp-runtime = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
+
+[features]
+default = ["std"]
+std = [
+  "codec/std",
+  "frame-support/std",
+  "frame-system/std",
+  "pallet-did/std",
+  "scale-info/std"
+]
+
