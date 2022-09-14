@@ -16,18 +16,67 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{AccountIdLookup, BlakeTwo256, Block as BlockT, IdentifyAccount, NumberFor, Verify},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, MultiSignature, MultiSigner
+	ApplyExtrinsicResult, MultiSignature, MultiSigner,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
+//--------------------------------------------------------
+
+use codec::Encode;
+use frame_support::log::{error, trace};
+use pallet_contracts::chain_extension::{
+	ChainExtension, Environment, Ext, InitState, RetVal, SysConfig, UncheckedFrom,
+};
+use sp_runtime::DispatchError;
+
+#[derive(Default)]
+pub struct FetchRandomExtension;
+
+impl ChainExtension<Runtime> for FetchRandomExtension {
+	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
+	where
+		<E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
+	{
+		let func_id = env.func_id();
+		match func_id {
+			1101 => {
+				let mut env = env.buf_in_buf_out();
+				let arg: [u8; 32] = env.read_as()?;
+				let random_seed = crate::RandomnessCollectiveFlip::random(&arg).0;
+				let random_slice = random_seed.encode();
+				trace!(
+						target: "runtime",
+						"[ChainExtension]|call|func_id:{:}",
+						func_id
+				);
+				env.write(&random_slice, false, None)
+					.map_err(|_| DispatchError::Other("ChainExtension failed to call random"))?;
+			},
+
+			_ => {
+				error!("Called an unregistered `func_id`: {:}", func_id);
+				return Err(DispatchError::Other("Unimplemented func_id"));
+			},
+		}
+		Ok(RetVal::Converging(0))
+	}
+
+	fn enabled() -> bool {
+		true
+	}
+}
+
+//--------------------------------------------------------
+
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
-		ConstU128, ConstU32, ConstU64, ConstU8, KeyOwnerProofSystem, Randomness, StorageInfo, Nothing
+		ConstU128, ConstU32, ConstU64, ConstU8, KeyOwnerProofSystem, Nothing, Randomness,
+		StorageInfo,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
@@ -37,9 +86,9 @@ pub use frame_support::{
 };
 pub use frame_system::Call as SystemCall;
 pub use pallet_balances::Call as BalancesCall;
+use pallet_contracts::DefaultContractAccessWeight;
 pub use pallet_timestamp::Call as TimestampCall;
 use pallet_transaction_payment::CurrencyAdapter;
-use pallet_contracts::DefaultContractAccessWeight;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
@@ -229,26 +278,26 @@ parameter_types! {
 }
 
 impl pallet_contracts::Config for Runtime {
-  type Time = Timestamp;
-  type Randomness = RandomnessCollectiveFlip;
-  type Currency = Balances;
-  type Event = Event;
-  type Call = Call;
-  type CallFilter = frame_support::traits::Nothing;
-  type WeightPrice = pallet_transaction_payment::Pallet<Self>;
-  type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
-  type ChainExtension = ();
-  type Schedule = Schedule;
-  type CallStack = [pallet_contracts::Frame<Self>; 31];
-  type DeletionQueueDepth = DeletionQueueDepth;
-  type DeletionWeightLimit = DeletionWeightLimit;
-  type DepositPerByte = DepositPerByte;
-  type DepositPerItem = DepositPerItem;
-  type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
-  type ContractAccessWeight = DefaultContractAccessWeight<BlockWeights>;
-  type MaxCodeLen = ConstU32<{ 256 * 1024 }>;
-  type RelaxedMaxCodeLen = ConstU32<{ 512 * 1024 }>;
-  type MaxStorageKeyLen = ConstU32<{ 512 * 1024 }>;
+	type Time = Timestamp;
+	type Randomness = RandomnessCollectiveFlip;
+	type Currency = Balances;
+	type Event = Event;
+	type Call = Call;
+	type CallFilter = frame_support::traits::Nothing;
+	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
+	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
+	type ChainExtension = FetchRandomExtension;
+	type Schedule = Schedule;
+	type CallStack = [pallet_contracts::Frame<Self>; 31];
+	type DeletionQueueDepth = DeletionQueueDepth;
+	type DeletionWeightLimit = DeletionWeightLimit;
+	type DepositPerByte = DepositPerByte;
+	type DepositPerItem = DepositPerItem;
+	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+	type ContractAccessWeight = DefaultContractAccessWeight<BlockWeights>;
+	type MaxCodeLen = ConstU32<{ 256 * 1024 }>;
+	type RelaxedMaxCodeLen = ConstU32<{ 512 * 1024 }>;
+	type MaxStorageKeyLen = ConstU32<{ 512 * 1024 }>;
 }
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
@@ -560,7 +609,7 @@ impl_runtime_apis! {
 			TransactionPayment::query_call_fee_details(call, len)
 		}
 	}
-	
+
 	impl pallet_contracts_rpc_runtime_api::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash>
 	for Runtime
 	{
@@ -574,7 +623,7 @@ impl_runtime_apis! {
 	 ) -> pallet_contracts_primitives::ContractExecResult<Balance> {
 			Contracts::bare_call(origin, dest, value, gas_limit, storage_deposit_limit, input_data, CONTRACTS_DEBUG_OUTPUT)
 	 }
-	 
+
 	 fn instantiate(
 			origin: AccountId,
 			value: Balance,
@@ -586,7 +635,7 @@ impl_runtime_apis! {
 	 ) -> pallet_contracts_primitives::ContractInstantiateResult<AccountId, Balance> {
 			Contracts::bare_instantiate(origin, value, gas_limit, storage_deposit_limit, code, data, salt, CONTRACTS_DEBUG_OUTPUT)
 			}
-			
+
 	 fn upload_code(
 			origin: AccountId,
 			code: Vec<u8>,
@@ -594,7 +643,7 @@ impl_runtime_apis! {
 	 ) -> pallet_contracts_primitives::CodeUploadResult<Hash, Balance> {
 			Contracts::bare_upload_code(origin, code, storage_deposit_limit)
 	 }
-	 
+
 	 fn get_storage(
 			address: AccountId,
 			key: Vec<u8>,
