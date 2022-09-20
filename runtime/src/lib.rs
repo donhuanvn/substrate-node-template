@@ -47,6 +47,9 @@ pub use sp_runtime::{Perbill, Permill};
 /// Import the template pallet.
 pub use pallet_template;
 
+/// Import the pallet abac.
+pub use pallet_abac;
+
 /// Import the pallet did.
 pub use pallet_did;
 
@@ -320,6 +323,12 @@ impl pallet_template::Config for Runtime {
 	type Event = Event;
 }
 
+/// Configure the pallet_abac.
+impl pallet_abac::Config for Runtime {
+	type Event = Event;
+	type Time = Timestamp;
+}
+
 /// Configure the pallet_did.
 impl pallet_did::Config for Runtime {
 	type Event = Event;
@@ -352,6 +361,9 @@ construct_runtime!(
 		Contracts: pallet_contracts,
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template,
+		// Include the custom logic from the pallet-abac in the runtime.
+		PalletAbac: pallet_abac,
+		// Include the custom logic from the pallet-did in the runtime.
 		PalletDid: pallet_did,
 		// Include the custom logic from the pallet-iot-identity in the runtime.
 		IotIdentityModule: pallet_iot_identity
