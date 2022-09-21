@@ -19,6 +19,7 @@ scale-info = { version = "2.1.1", default-features = false, features = ["derive"
 frame-support = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
 frame-system = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
 sp-core = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
+pallet-contracts = { version = "4.0.0-dev", default-features = false, path = "../pallet-contracts" }
 pallet-did = { version = "0.0.1-dev", default_features = false, path = "../pallet-did" }
 # frame-benchmarking = ...
 
@@ -33,5 +34,6 @@ std = [
   "scale-info/std",
   "frame-support/std",
   "frame-system/std",
+  "pallet-contracts/std",
   "pallet-did/std",
 ]
