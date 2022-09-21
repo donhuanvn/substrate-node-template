@@ -77,15 +77,12 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		NotOwner,
-		NotHasPermission,
-		InputOverflowed,
+		InputVectorTooLong,
 		InvalidAttributes,
-		InvalidPolicy,
-		AttributeClearingFailed,
-		AttributeSettingFailed,
-		AttributeEndorsementFailed,
-		PolicyAttachmentFailed,
-		PolicyDetachmentFailed,
+		NotPolicyAddress,
+		InvalidDelegate,
+		PolicyAttachmentExists,
+		PolicyAttachmentNotExists,
 	}
 
 	#[pallet::call]
@@ -98,15 +95,15 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			ensure!(list_of_attrs.len() <= VEC_MAX_LENGTH, Error::<T>::InputOverflowed);
+			ensure!(list_of_attrs.len() <= VEC_MAX_LENGTH, Error::<T>::InputVectorTooLong);
 			for attr in list_of_attrs.iter() {
 				ensure!(
 					attr.name.len() <= VEC_MAX_LENGTH && attr.value.len() <= VEC_MAX_LENGTH,
-					Error::<T>::InputOverflowed
+					Error::<T>::InputVectorTooLong
 				);
 			}
 		
-			Self::is_owner(&identity, &who)?;
+			Self::ensure_owner(&identity, &who)?;
 
 			if Self::check_attr_keys_duplication(&list_of_attrs) == true {
 				return Err(Error::<T>::InvalidAttributes.into());
@@ -146,12 +143,12 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			ensure!(list_of_attr_keys.len() <= VEC_MAX_LENGTH, Error::<T>::InputOverflowed);
+			ensure!(list_of_attr_keys.len() <= VEC_MAX_LENGTH, Error::<T>::InputVectorTooLong);
 			for attr_key in list_of_attr_keys.iter() {
-				ensure!(attr_key.len() <= VEC_MAX_LENGTH, Error::<T>::InputOverflowed);
+				ensure!(attr_key.len() <= VEC_MAX_LENGTH, Error::<T>::InputVectorTooLong);
 			}
 
-			Self::is_owner(&identity, &who)?;
+			Self::ensure_owner(&identity, &who)?;
 
 			// Don't accept any non-existing key.
 			for key in list_of_attr_keys.iter() {
@@ -179,12 +176,12 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			
-			ensure!(list_of_attr_keys.len() <= VEC_MAX_LENGTH, Error::<T>::InputOverflowed);
+			ensure!(list_of_attr_keys.len() <= VEC_MAX_LENGTH, Error::<T>::InputVectorTooLong);
 			for attr_key in list_of_attr_keys.iter() {
-				ensure!(attr_key.len() <= VEC_MAX_LENGTH, Error::<T>::InputOverflowed);
+				ensure!(attr_key.len() <= VEC_MAX_LENGTH, Error::<T>::InputVectorTooLong);
 			}
 
-			Self::is_owner(&identity, &who)?;
+			Self::ensure_owner(&identity, &who)?;
 
 			// Don't accept any non-existing key.
 			let all_existing = Self::check_attributes_existing(&target_identity, &list_of_attr_keys);
@@ -234,7 +231,12 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			Self::is_owner(&identity, &who)?;
+			ensure!(list_of_attr_keys.len() <= VEC_MAX_LENGTH, Error::<T>::InputVectorTooLong);
+			for attr_key in list_of_attr_keys.iter() {
+				ensure!(attr_key.len() <= VEC_MAX_LENGTH, Error::<T>::InputVectorTooLong);
+			}
+
+			Self::ensure_owner(&identity, &who)?;
 
 			// Don't accept any non-existing key.
 			let all_existing = Self::check_attributes_existing(&identity, &list_of_attr_keys);
@@ -265,6 +267,31 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
+			ensure!(name.len() <= VEC_MAX_LENGTH, Error::<T>::InputVectorTooLong);
+
+			Self::ensure_owner(&identity, &who)?;
+
+			// There are two cases: 
+			// The first one is self-attachment.
+			// The second one is called by identity has a delegate of policy attachment.
+			if identity != object {
+				Self::ensure_delegate_of_policy_admin(&object, &identity)?;
+			}
+			
+			Self::ensure_policy_address(&policy)?;
+
+			if <PolicyOf<T>>::contains_key(&object, &policy) {
+				return Err(Error::<T>::PolicyAttachmentExists.into());
+			}
+
+			let new_policy: Policy<T::AccountId, Moment<T>> = Policy {
+				name: name.clone(),
+				attached_by: identity.clone(),
+				attached_time: <T as Config>::Time::now(),
+			};
+
+			<PolicyOf<T>>::insert(&object, &policy, new_policy);
+
 			Self::deposit_event(Event::PolicyAttached(who, identity, object, policy, name));
 			Ok(())
 		}
@@ -278,38 +305,49 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
+			Self::ensure_owner(&identity, &who)?;
+
+			if !<PolicyOf<T>>::contains_key(&object, &policy) {
+				return Err(Error::<T>::PolicyAttachmentNotExists.into());
+			}
+
+			<PolicyOf<T>>::remove(&object, &policy);
+
 			Self::deposit_event(Event::PolicyDetached(who, identity, object, policy, Vec::new()));
 			Ok(())
 		}
 	}
 }
 
-impl<T: Config> Pallet<T> {
+impl<T: Config> Pallet<T>{
 	/// Validates if the AccountId 'actual_owner' owns the identity.
-	fn is_owner(identity: &T::AccountId, actual_owner: &T::AccountId) -> DispatchResult {
-		let owner = Self::identity_owner(identity);
-		match owner == *actual_owner {
-			true => Ok(()),
-			false => Err(Error::<T>::NotOwner.into()),
+	fn ensure_owner(identity: &T::AccountId, actual_owner: &T::AccountId) -> DispatchResult {
+		let result = <pallet_did::Pallet<T>>::is_owner(identity, actual_owner);
+		match result {
+			Err(_) => Err(Error::<T>::NotOwner.into()),
+			_ => Ok(())
 		}
 	}
 
-	/// Validates if the AccountId 'actual_owner' owns the identity.
-	fn identity_owner(identity: &T::AccountId) -> T::AccountId {
-		match pallet_did::Pallet::<T>::owner_of(identity) {
-			Some(id) => id,
-			None => identity.clone(),
-		}
-	}
-
-	fn is_delegate_for_policy_attachment(
+	fn ensure_delegate_of_policy_admin(
 		object: &T::AccountId,
 		attacher: &T::AccountId,
 	) -> DispatchResult {
-		Ok(())
+		let result = <pallet_did::Pallet<T>>::valid_delegate(
+			object, 
+			&b"PolicyAdmin".to_vec(),
+			attacher
+		);
+		match result {
+			Err(_) => Err(Error::<T>::InvalidDelegate.into()),
+			_ => Ok(())
+		}
 	}
 
-	fn is_address_of_smart_contract(address: &T::AccountId) -> DispatchResult {
+	fn ensure_policy_address(address: &T::AccountId) -> DispatchResult {
+		if !<pallet_contracts::Pallet<T>>::is_contract_address(address) {
+			return Err(Error::<T>::NotPolicyAddress.into())
+		}
 		Ok(())
 	}
 

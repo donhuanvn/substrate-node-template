@@ -282,7 +282,7 @@ pub mod pallet {
 
 impl<T: Config> Pallet<T> {
 	/// Validates if the AccountId 'actual_owner' owns the identity.
-	fn is_owner(identity: &T::AccountId, actual_owner: &T::AccountId) -> DispatchResult {
+	pub fn is_owner(identity: &T::AccountId, actual_owner: &T::AccountId) -> DispatchResult {
 		let owner = Self::identity_owner(identity);
 		match owner == *actual_owner {
 			true => Ok(()),
@@ -301,7 +301,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Validates if a delegate belongs to an identity and it has not expired.
 	#[allow(dead_code)]
-	fn valid_delegate(
+	pub fn valid_delegate(
 		identity: &T::AccountId,
 		delegate_type: &[u8],
 		delegate: &T::AccountId,

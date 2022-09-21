@@ -1090,3 +1090,9 @@ where
 		InternalInstantiateOutput { result: try_exec(), gas_meter, storage_deposit }
 	}
 }
+
+impl<T: Config> Pallet<T> {
+	pub fn is_contract_address(address: &T::AccountId) -> bool {
+		<ContractInfoOf<T>>::contains_key(address)
+	}
+}
