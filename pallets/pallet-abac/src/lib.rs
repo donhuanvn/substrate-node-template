@@ -9,7 +9,7 @@ use frame_system::pallet_prelude::*;
 
 const VEC_MAX_LENGTH: usize = 64;
 
-type Moment<T> = <<T as Config>::Time as Time>::Moment;
+pub type Moment<T> = <<T as Config>::Time as Time>::Moment;
 
 #[frame_support::pallet]
 pub mod pallet {

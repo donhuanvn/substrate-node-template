@@ -44,6 +44,10 @@ use pallet_contracts::DefaultContractAccessWeight;
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
+/// Import the chain extension.
+mod chain_extension;
+use crate::chain_extension::AbacChainExtension;
+
 /// Import the template pallet.
 pub use pallet_template;
 
@@ -237,7 +241,7 @@ impl pallet_contracts::Config for Runtime {
   type CallFilter = frame_support::traits::Nothing;
   type WeightPrice = pallet_transaction_payment::Pallet<Self>;
   type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
-  type ChainExtension = ();
+  type ChainExtension = AbacChainExtension;
   type Schedule = Schedule;
   type CallStack = [pallet_contracts::Frame<Self>; 31];
   type DeletionQueueDepth = DeletionQueueDepth;
