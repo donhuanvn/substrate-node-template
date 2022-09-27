@@ -3,7 +3,6 @@ members = [
     "node",
     "pallets/template",
     "pallets/pallet-contracts",
-    "pallets/iot-identity",
     "pallets/pallet-abac",
     "pallets/pallet-did",
     "runtime",

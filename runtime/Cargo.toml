@@ -56,7 +56,6 @@ hex-literal = { version = "0.3.4", optional = true }
 # Local Dependencies
 pallet-template = { version = "4.0.0-dev", default-features = false, path = "../pallets/template" }
 pallet-contracts = { version = "4.0.0-dev", default-features = false, path = "../pallets/pallet-contracts" }
-pallet-iot-identity = {version = "0.0.1-dev", default-features = false, path = "../pallets/iot-identity"}
 pallet-abac = { version = "0.0.1-dev", default_features = false, path = "../pallets/pallet-abac" }
 pallet-did = { version = "0.0.1-dev", default_features = false, path = "../pallets/pallet-did" }
 
@@ -81,7 +80,6 @@ std = [
 	"pallet-randomness-collective-flip/std",
 	"pallet-sudo/std",
 	"pallet-template/std",
-	"pallet-iot-identity/std",
 	"pallet-abac/std",
 	"pallet-did/std",
 	"pallet-timestamp/std",
